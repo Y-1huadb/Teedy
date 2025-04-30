@@ -8,6 +8,14 @@
     <version>1.12-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
+
+  <distributionManagement>
+    <site>
+        <id>local-repo</id>
+        <name>Local Repository</name>
+        <url>file://${project.build.directory}/site</url>
+    </site>
+  </distributionManagement>
   
   <modelVersion>4.0.0</modelVersion>
   <artifactId>docs-web-common</artifactId>
