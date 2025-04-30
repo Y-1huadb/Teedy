@@ -95,7 +95,6 @@ public class LoginActivity extends AppCompatActivity {
                         public void onSuccess(JSONObject json) {
                             // Empty previous user caches
                             PreferenceUtil.resetUserCache(getApplicationContext());
-
                             // Getting user info and redirecting to main activity
                             ApplicationContext.getInstance().fetchUserInfo(LoginActivity.this, new CallbackListener() {
                                 @Override

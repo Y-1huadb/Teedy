@@ -36,6 +36,7 @@ angular.module('docs').controller('Login', function(Restangular, $scope, $rootSc
         $state.go('document.default');
       }
     }, function(data) {
+      console.log(1)
       if (data.data.type === 'ValidationCodeRequired') {
         // A TOTP validation code is required to login
         $scope.codeRequired = true;

@@ -13,6 +13,14 @@
   <artifactId>docs-web</artifactId>
   <packaging>war</packaging>
   <name>Docs Web</name>
+  
+  <distributionManagement>
+    <site>
+        <id>local-repo</id>
+        <name>Local Repository</name>
+        <url>file://${project.build.directory}/site</url>
+    </site>
+  </distributionManagement>
 
   <dependencies>
     <!-- Dependencies to Docs -->
