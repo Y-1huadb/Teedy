@@ -33,16 +33,14 @@ pipeline {
         // Uploading Docker images into Docker Hub
         stage('Upload image') {
             steps {
-                script {
-                    sh '''
-                    export DOCKER_CLIENT_TIMEOUT=300
-                    export COMPOSE_HTTP_TIMEOUT=300
+                withCredentials([usernamePassword(credentialsId: 'Docker-Hub', usernameVariable: 'y261', passwordVariable: '12syy.Sustech')]) {
+                sh '''
                     echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
                     docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
                     docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
                     docker push ${DOCKER_IMAGE}:latest
-                    '''
-                }
+                '''
+            }
             }
         }
         // Running Docker container
