@@ -7,6 +7,8 @@ pipeline {
         // Docker Hub Repository's name
         DOCKER_IMAGE = 'y261/teedy' // your Docker Hub user name and Repository's name
         DOCKER_TAG = "${env.BUILD_NUMBER}" // use build number as tag
+        DOCKER_USER = 'y261'
+        DOCKER_PASS = '12syy.Sustech'
     }
     stages {
         stage('Build') {
