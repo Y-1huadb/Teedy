@@ -33,7 +33,7 @@ pipeline {
             steps {
                 script {
                     // Login to Docker Hub
-                    sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login https://docker.m.daocloud.io -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
+                    sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login https://docker.imgdb.de -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
                     // Push image
                     sh "docker push ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}"
                     // Optional: Push 'latest' tag
