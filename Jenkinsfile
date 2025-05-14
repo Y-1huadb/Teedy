@@ -30,18 +30,18 @@ pipeline {
         }
         // Uploading Docker images into Docker Hub
         stage('Upload image') {
-    steps {
-        script {
-            // Login to Docker Hub
-            sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
-            // Push image
-            sh "docker push ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}"
-            // Optional: Push 'latest' tag
-            sh "docker tag ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} ${env.DOCKER_IMAGE}:latest"
-            sh "docker push ${env.DOCKER_IMAGE}:latest"
+            steps {
+                script {
+                    // Login to Docker Hub
+                    sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login https://docker.m.daocloud.io -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
+                    // Push image
+                    sh "docker push ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}"
+                    // Optional: Push 'latest' tag
+                    sh "docker tag ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} ${env.DOCKER_IMAGE}:latest"
+                    sh "docker push ${env.DOCKER_IMAGE}:latest"
+                }
+            }
         }
-    }
-}
         // Running Docker container
         stage('Run containers') {
             steps {
