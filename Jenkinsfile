@@ -31,15 +31,14 @@ pipeline {
         // Uploading Docker images into Docker Hub
         stage('Upload image') {
             steps {
-                script {
-                    // Login to Docker Hub
-                    sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login https://docker.imgdb.de -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
-                    // Push image
-                    sh "docker push ${env.DOCKER_IMAGE}:${env.DOCKER_TAG}"
-                    // Optional: Push 'latest' tag
-                    sh "docker tag ${env.DOCKER_IMAGE}:${env.DOCKER_TAG} ${env.DOCKER_IMAGE}:latest"
-                    sh "docker push ${env.DOCKER_IMAGE}:latest"
-                }
+                withCredentials([usernamePassword(credentialsId: 'dockerhub_credential', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                sh '''
+                    echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
+                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    docker push ${DOCKER_IMAGE}:latest
+                '''
+            }
             }
         }
         // Running Docker container
