@@ -33,18 +33,14 @@ pipeline {
         // Uploading Docker images into Docker Hub
         stage('Upload image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'Docker-Hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                script {
                     sh '''
-                        # 登录到镜像加速器
-                        echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
-                        
-                        # 推送镜像到镜像加速器
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} dockerpull.cn/${DOCKER_IMAGE}:${DOCKER_TAG}
-                        docker push dockerpull.cn/${DOCKER_IMAGE}:${DOCKER_TAG}
-                        
-                        # 推送 latest 标签到镜像加速器
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} dockerpull.cn/${DOCKER_IMAGE}:latest
-                        docker push dockerpull.cn/${DOCKER_IMAGE}:latest
+                    export DOCKER_CLIENT_TIMEOUT=300
+                    export COMPOSE_HTTP_TIMEOUT=300
+                    echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
+                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    docker push ${DOCKER_IMAGE}:latest
                     '''
                 }
             }
