@@ -34,19 +34,13 @@ pipeline {
         stage('Upload image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'Docker-Hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        # 登录到 dockerpull.cn
-                        echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
-                        
-                        # 推送镜像到 dockerpull.cn
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} dockerpull.cn/${DOCKER_IMAGE}:${DOCKER_TAG}
-                        docker push dockerpull.cn/${DOCKER_IMAGE}:${DOCKER_TAG}
-                        
-                        # 推送 latest 标签到 dockerpull.cn
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} dockerpull.cn/${DOCKER_IMAGE}:latest
-                        docker push dockerpull.cn/${DOCKER_IMAGE}:latest
-                    '''
-                }
+                sh '''
+                    echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
+                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    docker push ${DOCKER_IMAGE}:latest
+                '''
+            }
             }
         }
         // Running Docker container
