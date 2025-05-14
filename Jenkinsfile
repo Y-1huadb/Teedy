@@ -1,14 +1,11 @@
 pipeline {
     agent any
     environment {
-        // define environment variable
         // Jenkins credentials configuration
         DOCKER_HUB_CREDENTIALS = credentials('Docker-Hub') // Docker Hub credentials ID store in Jenkins
         // Docker Hub Repository's name
         DOCKER_IMAGE = 'y261/teedy' // your Docker Hub user name and Repository's name
         DOCKER_TAG = "${env.BUILD_NUMBER}" // use build number as tag
-        DOCKER_USER = 'y261'
-        DOCKER_PASS = '12syy.Sustech'
     }
     stages {
         stage('Build') {
@@ -38,13 +35,13 @@ pipeline {
                         # 登录到镜像加速器
                         echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
                         
-                        # 推送镜像到镜像加速器
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} dockerpull.cn/${DOCKER_IMAGE}:${DOCKER_TAG}
-                        docker push dockerpull.cn/${DOCKER_IMAGE}:${DOCKER_TAG}
+                        # 推送镜像到 Docker Hub
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
                         
-                        # 推送 latest 标签到镜像加速器
-                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} dockerpull.cn/${DOCKER_IMAGE}:latest
-                        docker push dockerpull.cn/${DOCKER_IMAGE}:latest
+                        # 推送 latest 标签到 Docker Hub
+                        docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                        docker push ${DOCKER_IMAGE}:latest
                     '''
                 }
             }
@@ -53,12 +50,12 @@ pipeline {
         stage('Run containers') {
             steps {
                 script {
-                    // stop then remove containers if exists
+                    // 停止并移除现有容器（如果存在）
                     sh 'docker stop teedy-container-8081 || true'
                     sh 'docker rm teedy-container-8081 || true'
-                    // run Container
+                    // 运行新的容器
                     docker.image("${env.DOCKER_IMAGE}:${env.DOCKER_TAG}").run('--name teedy-container-8081 -d -p 8081:8080')
-                    // Optional: list all teedy-containers
+                    // 可选：列出所有运行中的 Teedy 容器
                     sh 'docker ps --filter "name=teedy-container"'
                 }
             }
