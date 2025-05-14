@@ -33,7 +33,7 @@ pipeline {
         // Uploading Docker images into Docker Hub
         stage('Upload image') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'Docker-Hub', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'Docker-Hub', usernameVariable: 'y261', passwordVariable: '12syy.Sustech')]) {
                 sh '''
                     echo $DOCKER_PASS | docker login https://dockerpull.cn -u $DOCKER_USER --password-stdin
                     docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
