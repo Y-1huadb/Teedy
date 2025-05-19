@@ -33,3 +33,18 @@ angular.module('docs').factory('User', function(Restangular) {
     }
   }
 });
+
+angular.module('docs').controller('ModalRegister', function($scope, $uibModalInstance) {
+  $scope.registerData = {
+    username: '',
+    password: ''
+  };
+
+  $scope.registerSubmit = function() {
+    $uibModalInstance.close($scope.registerData);
+  };
+
+  $scope.registerCancel = function() {
+    $uibModalInstance.dismiss('cancel');
+  };
+});

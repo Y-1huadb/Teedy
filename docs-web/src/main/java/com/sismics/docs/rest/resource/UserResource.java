@@ -1,11 +1,23 @@
 package com.sismics.docs.rest.resource;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+
+import org.apache.commons.lang3.StringUtils;
+
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.sismics.docs.core.constant.AclTargetType;
-import com.sismics.docs.core.constant.ConfigType;
 import com.sismics.docs.core.constant.Constants;
-import com.sismics.docs.core.dao.*;
+import com.sismics.docs.core.dao.AuthenticationTokenDao;
+import com.sismics.docs.core.dao.DocumentDao;
+import com.sismics.docs.core.dao.FileDao;
+import com.sismics.docs.core.dao.GroupDao;
+import com.sismics.docs.core.dao.PasswordRecoveryDao;
+import com.sismics.docs.core.dao.RegisterRequestDao;
+import com.sismics.docs.core.dao.RoleBaseFunctionDao;
+import com.sismics.docs.core.dao.UserDao;
 import com.sismics.docs.core.dao.criteria.GroupCriteria;
 import com.sismics.docs.core.dao.criteria.UserCriteria;
 import com.sismics.docs.core.dao.dto.GroupDto;
@@ -14,8 +26,13 @@ import com.sismics.docs.core.event.DocumentDeletedAsyncEvent;
 import com.sismics.docs.core.event.FileDeletedAsyncEvent;
 import com.sismics.docs.core.event.PasswordLostEvent;
 import com.sismics.docs.core.model.context.AppContext;
-import com.sismics.docs.core.model.jpa.*;
-import com.sismics.docs.core.util.ConfigUtil;
+import com.sismics.docs.core.model.jpa.AuthenticationToken;
+import com.sismics.docs.core.model.jpa.Document;
+import com.sismics.docs.core.model.jpa.File;
+import com.sismics.docs.core.model.jpa.Group;
+import com.sismics.docs.core.model.jpa.PasswordRecovery;
+import com.sismics.docs.core.model.jpa.RegisterRequest;
+import com.sismics.docs.core.model.jpa.User;
 import com.sismics.docs.core.util.RoutingUtil;
 import com.sismics.docs.core.util.authentication.AuthenticationUtil;
 import com.sismics.docs.core.util.jpa.SortCriteria;
@@ -30,19 +47,23 @@ import com.sismics.util.context.ThreadLocalContext;
 import com.sismics.util.filter.TokenBasedSecurityFilter;
 import com.sismics.util.totp.GoogleAuthenticator;
 import com.sismics.util.totp.GoogleAuthenticatorKey;
+
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObjectBuilder;
 import jakarta.servlet.http.Cookie;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.FormParam;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
-import org.apache.commons.lang3.StringUtils;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
 
 /**
  * User REST resources.
@@ -342,6 +363,71 @@ public class UserResource extends BaseResource {
         int maxAge = longLasted ? TokenBasedSecurityFilter.TOKEN_LONG_LIFETIME : -1;
         NewCookie cookie = new NewCookie(TokenBasedSecurityFilter.COOKIE_NAME, token, "/", null, null, maxAge, false);
         return Response.ok().entity(response.build()).cookie(cookie).build();
+    }
+
+    @POST
+    @Path("/register_request")
+    public Response registerRequest(
+        @FormParam("username") String username,
+        @FormParam("password") String password) {
+        
+        // Validate the input data
+        username = ValidationUtil.validateLength(username, "username", 3, 50);
+        ValidationUtil.validateUsername(username, "username");
+        password = ValidationUtil.validateLength(password, "password", 8, 50);
+        
+        // Create the user
+        RegisterRequestDao registerRequestDao = new RegisterRequestDao();
+        RegisterRequest registerRequest = new RegisterRequest();
+        registerRequest.setUsername(username);
+        registerRequest.setPassword(password);
+        try {
+            registerRequestDao.create(registerRequest);
+        } catch (Exception e) {
+            throw new ServerException("UnknownError", "Unknown server error", e);
+        }
+        
+        // Always return OK
+        JsonObjectBuilder response = Json.createObjectBuilder()
+                .add("status", "ok");
+        return Response.ok().entity(response.build()).build();
+    }
+
+    @GET
+    @Path("/register_requests")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response listRegisterRequests() {
+        // 检查管理员权限
+        checkBaseFunction(BaseFunction.ADMIN);
+        List<RegisterRequest> requests = new RegisterRequestDao().findAll();
+        return Response.ok().entity(requests).build();
+    }
+
+    @POST
+    @Path("/approve_register_request")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response approveRegisterRequest(
+            @FormParam("username") String username) throws Exception {
+        // 检查管理员权限
+        checkBaseFunction(BaseFunction.ADMIN);
+        RegisterRequestDao registerRequestDao = new RegisterRequestDao();
+        RegisterRequest requestApp = registerRequestDao.findByUsername(username);
+        if (requestApp == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Json.createObjectBuilder().add("error", "Request not found").build())
+                    .build();
+        }
+        // 创建正式用户
+        UserDao userDao = new UserDao();
+        User user = new User();
+        user.setUsername(requestApp.getUsername());
+        user.setPassword(requestApp.getPassword());
+        userDao.create(user, principal.getId());
+        
+        // 删除注册请求
+        registerRequestDao.delete(requestApp);
+        
+        return Response.ok().entity(Json.createObjectBuilder().add("result", "User created successfully").build()).build();
     }
 
     /**

@@ -355,6 +355,15 @@ angular.module('docs',
         }
       }
     })
+    .state('register_requests', {
+      url: '/register_requests',
+      views: {
+        'page': {
+          templateUrl: 'partial/docs/register_requests.html',
+          controller: 'RegisterRequests'
+        }
+      }
+    })
     .state('login', {
       url: '/login?redirectState&redirectParams',
       views: {

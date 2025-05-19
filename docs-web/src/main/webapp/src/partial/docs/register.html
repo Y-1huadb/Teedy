@@ -1,0 +1,26 @@
+<div class="modal-header">
+    <h3 class="modal-title">{{ 'Title' | translate }}</h3>
+</div>
+
+<div class="modal-body">
+    <form name="registerForm" novalidate>
+      <div class="form-group">
+        <label for="username">{{ 'Username' | translate }}</label>
+        <input type="text" class="form-control" id="username" ng-model="registerData.username" required />
+      </div>
+      <div class="form-group">
+        <label for="password">{{ 'Password' | translate }}</label>
+        <input type="password" class="form-control" id="password" ng-model="registerData.password" required />
+      </div>
+      <!-- 根据需要可以增加其他输入项 -->
+    </form>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-primary" ng-click="registerSubmit()" ng-disabled="registerForm.$invalid">
+      {{ 'Submit' | translate }}
+    </button>
+    <button type="button" class="btn btn-default" ng-click="registerCancel()">
+      {{ 'Cancel' | translate }}
+    </button>
+</div>

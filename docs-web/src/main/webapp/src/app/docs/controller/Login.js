@@ -50,6 +50,36 @@ angular.module('docs').controller('Login', function(Restangular, $scope, $rootSc
     });
   };
 
+  // Register
+  $scope.openRegister = function () {
+    var modalInstance = $uibModal.open({
+      templateUrl: 'partial/docs/register.html', // 注册模态框的页面
+      controller: 'ModalRegister'
+    });
+
+    modalInstance.result.then(function(registerData) {
+      // 发送注册请求到后端，由管理员审核后决定是否添加用户
+      Restangular.one('user').post('register_request', {
+        username: registerData.username,
+        password: registerData.password
+        // 可根据需要增加其他字段，如email等
+      }).then(function() {
+        var title = $translate.instant('Request_Success');
+        var msg = $translate.instant('Request_Success_message');
+        var btns = [{result: 'ok', label: $translate.instant('ok'), cssClass: 'btn-primary'}];
+        $dialog.messageBox(title, msg, btns);
+      }, function() {
+        console.log("Register request error:", error);
+        var title = $translate.instant('Request_Error');
+        var msg = $translate.instant('Request_Error_message');
+        var btns = [{result: 'ok', label: $translate.instant('ok'), cssClass: 'btn-primary'}];
+        $dialog.messageBox(title, msg, btns);
+      });
+    }, function() {
+      // 弹框关闭或取消后可选处理
+    });
+  };
+
   // Password lost
   $scope.openPasswordLost = function () {
     $uibModal.open({

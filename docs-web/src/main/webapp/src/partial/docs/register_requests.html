@@ -1,0 +1,28 @@
+<div class="container">
+    <h2>{{ 'Approve_new_users' | translate }}</h2>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+           <th>{{ 'Username' | translate }}</th>
+           <th>{{ 'Request Date' | translate }}</th>
+           <th>{{ 'Status' | translate }}</th>
+           <th>{{ 'Actions' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr ng-repeat="request in requests">
+            <td>{{ request.username }}</td>
+            <td>{{ request.requestDate | date:'short' }}</td>
+            <td>{{ request.status }}</td>
+            <td>
+                <button class="btn btn-success" ng-click="approveRequest(request)">
+                  <span class="fas fa-check"></span> {{ 'Approve' | translate }}
+                </button>
+                <button class="btn btn-danger" ng-click="deleteRequest(request)">
+                  <span class="fas fa-trash"></span> {{ 'Delete' | translate }}
+                </button>
+            </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
