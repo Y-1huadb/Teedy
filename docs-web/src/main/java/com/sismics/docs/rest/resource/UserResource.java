@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
+import com.google.gson.Gson;
 import com.sismics.docs.core.constant.AclTargetType;
 import com.sismics.docs.core.constant.Constants;
 import com.sismics.docs.core.dao.AuthenticationTokenDao;
@@ -64,6 +65,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
+import org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * User REST resources.
@@ -369,7 +371,8 @@ public class UserResource extends BaseResource {
     @Path("/register_request")
     public Response registerRequest(
         @FormParam("username") String username,
-        @FormParam("password") String password) {
+        @FormParam("password") String password,
+        @FormParam("email") String email) {
         
         // Validate the input data
         username = ValidationUtil.validateLength(username, "username", 3, 50);
@@ -381,6 +384,7 @@ public class UserResource extends BaseResource {
         RegisterRequest registerRequest = new RegisterRequest();
         registerRequest.setUsername(username);
         registerRequest.setPassword(password);
+        registerRequest.setEmail(email);
         try {
             registerRequestDao.create(registerRequest);
         } catch (Exception e) {
@@ -397,10 +401,10 @@ public class UserResource extends BaseResource {
     @Path("/register_requests")
     @Produces(MediaType.APPLICATION_JSON)
     public Response listRegisterRequests() {
-        // 检查管理员权限
-        checkBaseFunction(BaseFunction.ADMIN);
         List<RegisterRequest> requests = new RegisterRequestDao().findAll();
-        return Response.ok().entity(requests).build();
+        Gson gson = new Gson();
+        String json = gson.toJson(requests);
+        return Response.ok(json, MediaType.APPLICATION_JSON).build();
     }
 
     @POST
@@ -409,7 +413,6 @@ public class UserResource extends BaseResource {
     public Response approveRegisterRequest(
             @FormParam("username") String username) throws Exception {
         // 检查管理员权限
-        checkBaseFunction(BaseFunction.ADMIN);
         RegisterRequestDao registerRequestDao = new RegisterRequestDao();
         RegisterRequest requestApp = registerRequestDao.findByUsername(username);
         if (requestApp == null) {
@@ -422,7 +425,16 @@ public class UserResource extends BaseResource {
         User user = new User();
         user.setUsername(requestApp.getUsername());
         user.setPassword(requestApp.getPassword());
-        userDao.create(user, principal.getId());
+        user.setRoleId("user");
+        user.setEmail(requestApp.getEmail());
+        user.setPrivateKey(RandomStringUtils.randomAlphanumeric(50));
+        user.setCreateDate(new Date());
+        user.setOnboarding(false);
+        user.setStorageQuota(0L);
+        user.setStorageCurrent(0L);
+
+
+        userDao.create(user, "admin");
         
         // 删除注册请求
         registerRequestDao.delete(requestApp);

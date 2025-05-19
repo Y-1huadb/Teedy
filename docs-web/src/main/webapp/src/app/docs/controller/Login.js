@@ -36,7 +36,6 @@ angular.module('docs').controller('Login', function(Restangular, $scope, $rootSc
         $state.go('document.default');
       }
     }, function(data) {
-      console.log(1)
       if (data.data.type === 'ValidationCodeRequired') {
         // A TOTP validation code is required to login
         $scope.codeRequired = true;
@@ -61,7 +60,8 @@ angular.module('docs').controller('Login', function(Restangular, $scope, $rootSc
       // 发送注册请求到后端，由管理员审核后决定是否添加用户
       Restangular.one('user').post('register_request', {
         username: registerData.username,
-        password: registerData.password
+        password: registerData.password,
+        email:registerData.email
         // 可根据需要增加其他字段，如email等
       }).then(function() {
         var title = $translate.instant('Request_Success');
