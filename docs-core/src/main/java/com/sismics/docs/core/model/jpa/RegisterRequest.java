@@ -18,6 +18,9 @@ public class RegisterRequest {
     @Column(name = "PASSWORD_C", length = 100, nullable = false)
     private String password;
 
+    @Column(name = "EMAIL_C", length = 100, nullable = false)
+    private String email;
+
     @Column(name = "REQUEST_DATE_D", nullable = false)
     private Date requestDate;
 
@@ -41,6 +44,14 @@ public class RegisterRequest {
     public void setPassword(String password) {
         this.password = password;
     }
+
+    public String getEmail() {
+        return email;
+    }
+    
+    public void setEmail(String email) {
+        this.email = email;
+    }  
     
     // Getter and Setter for requestDate
     public Date getRequestDate() {

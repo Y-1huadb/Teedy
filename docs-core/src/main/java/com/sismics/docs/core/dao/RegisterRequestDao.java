@@ -7,6 +7,7 @@ import com.sismics.docs.core.model.jpa.RegisterRequest;
 import com.sismics.util.context.ThreadLocalContext;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 
@@ -59,8 +60,12 @@ public class RegisterRequestDao {
      */
     public List<RegisterRequest> findAll() {
         EntityManager em = ThreadLocalContext.get().getEntityManager();
-        TypedQuery<RegisterRequest> query = em.createQuery("SELECT rr FROM RegisterRequest rr", RegisterRequest.class);
-        return query.getResultList();
+        try {
+            TypedQuery<RegisterRequest> q = em.createQuery("SELECT rr FROM RegisterRequest rr", RegisterRequest.class);
+            return q.getResultList();
+        } catch (NoResultException e) {
+            return null;
+        }
     }
 
     /**
