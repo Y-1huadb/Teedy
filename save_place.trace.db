@@ -1302,3 +1302,9 @@ create memory table T_FILE_PATH (ID_C varchar(100) not null, PATH_C varchar(1000
 2025-05-20 22:36:27 jdbc[3]: exception
 org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "T_FILE_PATH" already exists; SQL statement:
 create memory table T_FILE_PATH (ID_C varchar(100) not null, PATH_C varchar(1000) not null, primary key (ID_C) ); [42101-199]
+2025-05-21 01:51:37 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "T_FILE_PATH" already exists; SQL statement:
+create memory table T_FILE_PATH (ID_C varchar(100) not null, PATH_C varchar(1000) not null, primary key (ID_C) ); [42101-199]
+2025-05-21 01:52:25 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "T_FILE_PATH" already exists; SQL statement:
+create memory table T_FILE_PATH (ID_C varchar(100) not null, PATH_C varchar(1000) not null, primary key (ID_C) ); [42101-199]
