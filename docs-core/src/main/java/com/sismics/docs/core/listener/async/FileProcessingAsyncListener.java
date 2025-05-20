@@ -1,14 +1,30 @@
 package com.sismics.docs.core.listener.async;
 
+import java.awt.image.BufferedImage;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.text.MessageFormat;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.crypto.Cipher;
+import javax.crypto.CipherOutputStream;
+
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.eventbus.AllowConcurrentEvents;
 import com.google.common.eventbus.Subscribe;
 import com.sismics.docs.core.dao.FileDao;
+import com.sismics.docs.core.dao.FilePathDao;
 import com.sismics.docs.core.dao.UserDao;
 import com.sismics.docs.core.event.FileCreatedAsyncEvent;
 import com.sismics.docs.core.event.FileEvent;
 import com.sismics.docs.core.event.FileUpdatedAsyncEvent;
 import com.sismics.docs.core.model.context.AppContext;
-import com.sismics.docs.core.model.jpa.File;
+import com.sismics.docs.core.model.jpa.FilePath;
 import com.sismics.docs.core.model.jpa.User;
 import com.sismics.docs.core.util.DirectoryUtil;
 import com.sismics.docs.core.util.EncryptionUtil;
@@ -18,17 +34,6 @@ import com.sismics.docs.core.util.format.FormatHandler;
 import com.sismics.docs.core.util.format.FormatHandlerUtil;
 import com.sismics.util.ImageUtil;
 import com.sismics.util.Scalr;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import javax.crypto.Cipher;
-import javax.crypto.CipherOutputStream;
-import java.awt.image.BufferedImage;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.text.MessageFormat;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Listener on file processing.
@@ -78,7 +83,7 @@ public class FileProcessingAsyncListener {
      * @param isFileCreated True if the file was just created
      */
     private void processFile(FileEvent event, boolean isFileCreated) {
-        AtomicReference<File> file = new AtomicReference<>();
+        AtomicReference<com.sismics.docs.core.model.jpa.File> file = new AtomicReference<>();
         AtomicReference<User> user = new AtomicReference<>();
 
         // Open a first transaction to get what we need to start the processing
@@ -101,13 +106,15 @@ public class FileProcessingAsyncListener {
             FileUtil.endProcessingFile(event.getFileId());
             return;
         }
+        
+        FileCopyAndPush(event);
         String content = extractContent(event, user.get(), file.get());
 
         // Open a new transaction to save the file content
         TransactionUtil.handle(() -> {
             // Save the file to database
             FileDao fileDao = new FileDao();
-            File freshFile = fileDao.getActiveById(event.getFileId());
+            com.sismics.docs.core.model.jpa.File freshFile = fileDao.getActiveById(event.getFileId());
             if (freshFile == null) {
                 // The file has been deleted since the text extraction started, ignore the result
                 return;
@@ -136,7 +143,7 @@ public class FileProcessingAsyncListener {
      * @param file Fresh file
      * @return Text content
      */
-    private String extractContent(FileEvent event, User user, File file) {
+    private String extractContent(FileEvent event, User user, com.sismics.docs.core.model.jpa.File file) {
         // Find a format handler
         FormatHandler formatHandler = FormatHandlerUtil.find(file.getMimeType());
         if (formatHandler == null) {
@@ -182,5 +189,30 @@ public class FileProcessingAsyncListener {
         log.info(MessageFormat.format("File content extracted in {0}ms: " + file.getId(), System.currentTimeMillis() - startTime));
 
         return content;
+    }
+    private void FileCopyAndPush(FileEvent event){
+        java.io.File repoDir = new java.io.File("/home/y/Desktop/Sustech/Software_Engineering/code/Teedy");
+        java.io.File sourceFile = new java.io.File(event.getUnencryptedFile().toString());
+        java.io.File destFile = new java.io.File(repoDir, "tmp/" + sourceFile.getName());
+
+        try{
+            // 复制文件
+            Files.copy(sourceFile.toPath(), destFile.toPath());
+            Git git = Git.open(repoDir);
+            git.add().addFilepattern("tmp/" + sourceFile.getName()).call();
+            git.commit().setMessage("Add file: " + sourceFile.getName()).call();
+            git.push()
+                .setCredentialsProvider(new UsernamePasswordCredentialsProvider("Y-1huadb", System.getenv("GITHUB_TOKEN")))
+                .call();
+
+            FilePathDao filePathDao = new FilePathDao();
+            FilePath filePath = new FilePath();
+            filePath.setId(event.getFileId());
+            filePath.setPath("https://raw.githubusercontent.com/Y-1huadb/Teedy/refs/heads/master/"+"tmp/" + sourceFile.getName());
+            filePathDao.create(filePath);
+
+        }catch (Exception e){ 
+            e.printStackTrace();
+        }
     }
 }

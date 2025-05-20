@@ -67,11 +67,14 @@ angular.module('docs').controller('FileModalView', function ($uibModalInstance, 
    * Navigate to the previous file.
    */
   $scope.goPreviousFile = function () {
+    console.log($stateParams); 
     var previous = $scope.previousFile();
     if (previous) {
       $state.go('^.file', { id: $stateParams.id, fileId: previous.id });
     }
   };
+
+
 
   /**
    * Open the file in a new window.
@@ -96,6 +99,17 @@ angular.module('docs').controller('FileModalView', function ($uibModalInstance, 
       popup.print();
       popup.close();
     }
+  };
+
+  $scope.translateFile = function () {
+    // 调用 file/translate 接口传入当前文件 id
+    Restangular.one('file/' + $stateParams.fileId + '/translate').post().then(function(response) {
+        $scope.trustedFileUrl = $sce.trustAsResourceUrl('../api/file/' + response.fileId + '/data');
+
+    }, function (error) {
+        alert($stateParams.fileId + "翻译失败");
+        alert("翻译失败：" + (error.data && error.data.message || error));
+    });
   };
 
   /**
