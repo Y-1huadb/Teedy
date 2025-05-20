@@ -8,6 +8,7 @@ import com.sismics.docs.core.dao.AclDao;
 import com.sismics.docs.core.dao.DocumentDao;
 import com.sismics.docs.core.dao.FileDao;
 import com.sismics.docs.core.dao.UserDao;
+import com.sismics.docs.core.dao.FilePathDao;
 import com.sismics.docs.core.dao.dto.DocumentDto;
 import com.sismics.docs.core.event.DocumentUpdatedAsyncEvent;
 import com.sismics.docs.core.event.FileDeletedAsyncEvent;
@@ -18,6 +19,7 @@ import com.sismics.docs.core.model.jpa.User;
 import com.sismics.docs.core.util.DirectoryUtil;
 import com.sismics.docs.core.util.EncryptionUtil;
 import com.sismics.docs.core.util.FileUtil;
+import com.sismics.docs.rest.util.TranslateRequestUtil;
 import com.sismics.rest.exception.ClientException;
 import com.sismics.rest.exception.ForbiddenClientException;
 import com.sismics.rest.exception.ServerException;
@@ -27,6 +29,11 @@ import com.sismics.util.HttpUtil;
 import com.sismics.util.JsonUtil;
 import com.sismics.util.context.ThreadLocalContext;
 import com.sismics.util.mime.MimeType;
+import com.sismics.util.mime.MimeTypeUtil;
+
+import cn.hutool.json.JSON;
+
+import org.apache.http.client.methods.HttpPost;
 import org.glassfish.jersey.media.multipart.FormDataBodyPart;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 
@@ -39,8 +46,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.StreamingOutput;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -49,8 +58,27 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import javax.crypto.spec.SecretKeySpec;
+
+import org.h2.store.fs.FilePath;
+
+import com.aliyun.tea.*;
+import com.aliyun.alimt20181012.*;
+import com.aliyun.alimt20181012.models.*;
+import com.aliyun.teaopenapi.*;
+import com.aliyun.teaopenapi.models.*;
+import com.aliyun.darabonba.env.*;
+import com.aliyun.teaconsole.*;
+import com.aliyun.teautil.*;
+import javax.crypto.Mac;
+import java.util.Arrays;
+import org.apache.commons.codec.binary.Base64;
+import org.json.JSONObject;
+import java.net.URL;
 
 /**
  * File REST resources.
@@ -715,6 +743,122 @@ public class FileResource extends BaseResource {
         authenticate();
         List<File> fileList = findFiles(filesIdsList);
         return sendZippedFiles("files", fileList);
+    }
+
+    @POST
+    @Path("{id: [a-z0-9\\-]+}/translate")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response translateFile(@PathParam("id") String fileId) {
+        if (!authenticate()) {
+            throw new ForbiddenClientException();
+        }
+        File file = findFile(fileId, null);
+        UserDao userDao = new UserDao();
+        User user = userDao.getById(file.getUserId());
+        java.nio.file.Path storedFile = DirectoryUtil.getStorageDirectory().resolve(fileId);
+        java.nio.file.Path unencryptedFile, filePath;
+        System.out.println("hello1");
+        try{
+            unencryptedFile = EncryptionUtil.decryptFile(storedFile, user.getPrivateKey());
+            filePath = unencryptedFile.getParent().resolve(file.getName());
+            Files.move(unencryptedFile, filePath, StandardCopyOption.REPLACE_EXISTING);
+            unencryptedFile = filePath;
+        } catch (Exception e) {
+            throw new ServerException("ProcessingError", "Error processing this file", e);
+        }
+        JSONObject jsonObject = new JSONObject();
+        try {
+            byte[] fileContent = Files.readAllBytes(unencryptedFile);
+            String resultContent = Base64.encodeBase64String(fileContent);
+            JSONObject jsonObject3 = new JSONObject();
+            JSONObject jsonObject4 = new JSONObject();
+            String type = MimeTypeUtil.getFileExtension(file.getMimeType());
+            jsonObject4.put("format", type);
+            jsonObject3.put("filename", file.getName());
+            jsonObject3.put("content", resultContent);
+            jsonObject3.put("format", type);
+            jsonObject.put("from", "en");
+            jsonObject.put("to", "zh");
+            jsonObject.put("input", jsonObject3);
+            jsonObject.put("output", jsonObject4);
+        } catch (Exception e) {
+            throw new ServerException("DecryptionError", "Error read file content", e);
+        }
+        System.out.println("Hello3");
+        System.out.println(jsonObject.toString());
+        System.out.println("Hello4");
+
+        String responseString = TranslateRequestUtil.doPost(TranslateRequestUtil.CREATE_TRANS_JOB, jsonObject);
+        if (responseString == null) {
+            throw new ClientException("PostError", "Error post request.");
+        }
+        JSONObject response = new JSONObject(responseString).optJSONObject("data");
+        if (response == null) {
+            throw new ClientException("PostError", "Error post request.");
+        }
+        int requestId = response.optInt("requestId");
+        if (requestId == 0) {
+            throw new ClientException("PostError", "Error post request.");
+        }
+        // Check if the translation is finished
+        int checkIsFinish;
+        int time = 0;
+        while (true) {
+            try{
+                Thread.sleep(1000);
+                time++;
+                if (time > 60) {
+                    throw new ServerException("TimeOutError", "Time out");
+                }
+            }catch(InterruptedException e){
+                throw new ServerException("TimeOutError", "Time out", e);
+            }
+            JSONObject query = new JSONObject();
+            query.put("requestId", requestId);
+            String queryResponseString = TranslateRequestUtil.doPost(TranslateRequestUtil.QUERY_TRANS_JOB, query);
+            checkIsFinish = new JSONObject(queryResponseString).optJSONObject("data").optInt("status");
+            if(checkIsFinish == 1){
+                String translatedFileUrl = new JSONObject(queryResponseString).optJSONObject("data").optString("fileSrcUrl");
+                java.nio.file.Path unencryptedTranslatedFile;
+                long fileSize = 0;
+                String tanslatedFileName = "translated_" + file.getName(); 
+                try{
+                    URL fileUrl = new URL(translatedFileUrl);
+                    System.out.println("result:"+fileUrl);
+                    HttpURLConnection connection = (HttpURLConnection) fileUrl.openConnection();
+                    connection.setRequestMethod("GET");
+                    try (InputStream inputStream = connection.getInputStream()) {
+                        unencryptedTranslatedFile = Files.createTempFile("translated_file", ".pdf");
+                        Files.copy(inputStream, unencryptedTranslatedFile, StandardCopyOption.REPLACE_EXISTING);
+                        fileSize = Files.size(unencryptedTranslatedFile);
+                    } 
+                    connection.disconnect();
+                    String newFileId = FileUtil.createFile(
+                            tanslatedFileName,                
+                            null,                    
+                            unencryptedTranslatedFile,     
+                            fileSize,                 
+                            null,            
+                            principal.getId(),        
+                            file.getDocumentId() 
+                    );
+                    JsonObjectBuilder finalResponse = Json.createObjectBuilder()
+                            .add("status", "ok")
+                            .add("fileId", newFileId);
+                    return Response.ok().entity(finalResponse.build()).build();
+                }catch(Exception e){
+                    e.printStackTrace();
+                } finally {
+                    // 清理临时文件
+                    try {
+                        Files.deleteIfExists(unencryptedFile);
+                    } catch (IOException e) {
+                        System.err.println("Error deleting temporary file: " + e.getMessage());
+                    }
+                }
+            }
+        }
+
     }
 
     /**
