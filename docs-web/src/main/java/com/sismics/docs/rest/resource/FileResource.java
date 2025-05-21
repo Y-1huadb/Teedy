@@ -827,6 +827,7 @@ public class FileResource extends BaseResource {
                     .add("fileId", translatedFileId);
             return Response.ok().entity(finalResponse.build()).build();
         } catch(Exception e) {
+            System.err.println("Error downloading translated file: " + e.getMessage());
             e.printStackTrace();
             throw new ServerException("DownloadError", "Error downloading translated file", e);
         } finally {
